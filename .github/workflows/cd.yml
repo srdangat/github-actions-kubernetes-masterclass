@@ -26,6 +26,7 @@ jobs:
             SHA=${{ github.event.workflow_run.head_sha }}
             IMAGE_TAG=${SHA::7}
 
+            # Clone repo if not exists
             if [ ! -d "$REPO" ]; then
               git clone ${{ github.server_url }}/${{ github.repository }}.git $REPO
             fi
@@ -36,17 +37,18 @@ jobs:
             # Docker login
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-            # Create .env file for compose
-            cat > .env <<EOF
-DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
-IMAGE_TAG=${IMAGE_TAG}
-DB_NAME=${{ secrets.DB_NAME }}
-DB_USER=${{ secrets.DB_USER }}
-DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
-EOF
+            # Clean env file
+            : > .env
+
+            # Create .env safely 
+            printf "DOCKERHUB_USERNAME=%s\n" "${{ secrets.DOCKERHUB_USERNAME }}" >> .env
+            printf "IMAGE_TAG=%s\n" "$IMAGE_TAG" >> .env
+
+            printf "DB_NAME=%s\n" "${{ secrets.DB_NAME }}" >> .env
+            printf "DB_USER=%s\n" "${{ secrets.DB_USER }}" >> .env
+            printf "DB_PASSWORD=%s\n" "${{ secrets.DB_PASSWORD }}" >> .env
+            printf "MYSQL_ROOT_PASSWORD=%s\n" "${{ secrets.MYSQL_ROOT_PASSWORD }}" >> .env
 
             # Deploy
             docker compose pull
             docker compose up -d
-            docker image prune -f
