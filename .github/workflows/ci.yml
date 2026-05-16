@@ -27,3 +27,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_SUMMARY: true
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+
+  sast:
+    name: SAST Scan (Semgrep)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Semgrep Scan
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/ci
