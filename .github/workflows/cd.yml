@@ -36,20 +36,17 @@ jobs:
             # Docker login
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-            # Create .env for docker compose
+            # Create .env file for compose
             cat > .env <<EOF
 DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
 IMAGE_TAG=${IMAGE_TAG}
-
-DB_HOST=${{ secrets.DB_HOST }}
 DB_NAME=${{ secrets.DB_NAME }}
 DB_USER=${{ secrets.DB_USER }}
 DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-DB_PORT=${{ secrets.DB_PORT }}
 MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
 EOF
 
-            
+            # Deploy
             docker compose pull
             docker compose up -d
             docker image prune -f
