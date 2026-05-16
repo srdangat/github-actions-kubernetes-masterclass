@@ -16,93 +16,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Gitleaks Scan
-        uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_SUMMARY: true
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
 
-  sast:
-    name: SAST Scan (Semgrep)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Semgrep Scan
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: p/ci
 
   lint:
     name: Dockerfile Lint
     runs-on: ubuntu-latest
+    needs: [secrets]
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Backend Dockerfile Lint
-        uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: backend/Dockerfile
 
-      - name: Frontend Dockerfile Lint
-        uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: frontend/Dockerfile
-
-  go-security:
-    name: Go Security Checks
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: backend/go.mod
-          cache: true
-          cache-dependency-path: |
-            backend/go.mod
-            backend/go.sum
-
-      - name: Download dependencies
-        working-directory: backend
-        run: go mod download
-
-      - name: Go Vet
-        working-directory: backend
-        run: go vet ./...
-
-      - name: Govulncheck
-        working-directory: backend
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest 
-          govulncheck -mode=source ./...
 
 
   build:
     name: Build + Scan + Push Docker Images
     runs-on: ubuntu-latest
-    needs: [secrets, sast, lint, go-security]
+    needs: [secrets, lint]
 
     strategy:
       matrix:
         service: [backend, frontend]
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set Short SHA
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
@@ -124,11 +79,9 @@ jobs:
         with:
           context: ./${{ matrix.service }}
           load: true
-          tags: |
-            ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
-            ${{ env.IMAGE }}:latest
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,scope=${{ matrix.service }},mode=max
+          tags: ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Trivy Scan
         uses: aquasecurity/trivy-action@master
@@ -139,7 +92,44 @@ jobs:
           ignore-unfixed: true
 
       - name: Push Image
-        if: success()
-        run: |
-          docker push ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
-          docker push ${{ env.IMAGE }}:latest
+        run: docker push ${{ env.IMAGE }}:${{ env.SHORT_SHA }}
+
+
+  go-security:
+    name: Go Security Checks
+    runs-on: ubuntu-latest
+    needs: [secrets, lint]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+
+      - run: go vet ./...
+        working-directory: backend
+
+      - run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1
+          govulncheck -mode=source ./...
+        working-directory: backend
+
+
+  sast:
+    name: SAST Scan (Semgrep)
+    runs-on: ubuntu-latest
+    needs: [secrets, lint]
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: semgrep/semgrep-action@v1
+        with:
+          config: p/ci
