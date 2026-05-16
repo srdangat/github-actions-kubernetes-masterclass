@@ -52,9 +52,9 @@ jobs:
       - name: Backend Dockerfile Lint
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfiles: backend/Dockerfile
+          dockerfile: backend/Dockerfile
 
       - name: Frontend Dockerfile Lint
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfiles: frontend/Dockerfile
+          dockerfile: frontend/Dockerfile
