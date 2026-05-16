@@ -1,4 +1,4 @@
-name: CI Pipeline (Security + Build)
+name: CI Pipeline
 
 on:
   push:
