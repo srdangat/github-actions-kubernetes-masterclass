@@ -1,32 +1,55 @@
-name: CD
+name: CD Pipeline
 
 on:
   workflow_run:
-    workflows: ["CI"]
+    workflows: ["CI Pipeline (Security + Build)"]
     types: [completed]
     branches: [main]
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && vars.DEPLOY_ENABLED == 'true' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+
     steps:
-      - uses: appleboy/ssh-action@v1
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+
           script: |
-            if [ ! -d ~/github-actions-kubernetes-masterclass ]; then
-              git clone ${{ github.server_url }}/${{ github.repository }}.git ~/github-actions-kubernetes-masterclass
+            set -e
+
+            REPO=~/app
+            SHA=${{ github.event.workflow_run.head_sha }}
+            IMAGE_TAG=${SHA::7}
+
+            if [ ! -d "$REPO" ]; then
+              git clone ${{ github.server_url }}/${{ github.repository }}.git $REPO
             fi
-            cd ~/github-actions-kubernetes-masterclass
+
+            cd $REPO
             git pull origin main
-            if [ ! -f .env ]; then
-              echo "ERROR: ~/github-actions-kubernetes-masterclass/.env is missing. Create it once with DOCKERHUB_USERNAME and DB credentials."
-              exit 1
-            fi
+
+            # Docker login
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+            # Create .env for docker compose
+            cat > .env <<EOF
+DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+IMAGE_TAG=${IMAGE_TAG}
+
+DB_HOST=${{ secrets.DB_HOST }}
+DB_NAME=${{ secrets.DB_NAME }}
+DB_USER=${{ secrets.DB_USER }}
+DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+DB_PORT=${{ secrets.DB_PORT }}
+MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+EOF
+
+            
             docker compose pull
             docker compose up -d
             docker image prune -f
-
