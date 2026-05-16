@@ -40,3 +40,21 @@ jobs:
         uses: semgrep/semgrep-action@v1
         with:
           config: p/ci
+
+  lint:
+    name: Dockerfile Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Backend Dockerfile Lint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfiles: ./backend/Dockerfile
+
+      - name: Frontend Dockerfile Lint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfiles: ./frontend/Dockerfile
