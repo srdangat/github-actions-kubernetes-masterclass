@@ -9,7 +9,7 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux \
-    go build -ldflags="-s -w" -o skillpulse .
+    go build -trimpath -ldflags="-s -w" -o skillpulse .
 
 
 # Stage 2: Runtime
