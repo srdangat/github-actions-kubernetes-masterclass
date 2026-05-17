@@ -5,7 +5,7 @@ metadata:
   name: frontend
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "4"
   labels:
     app: frontend
 spec:
@@ -23,7 +23,7 @@ metadata:
   name: frontend
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "4"
   labels:
     app: frontend
 spec:
