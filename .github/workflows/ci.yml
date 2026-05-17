@@ -15,8 +15,16 @@ on:
 
 env:
   REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+  SHORT_SHA: ${{ github.sha }}
 
 jobs:
+
+  trivy-db:
+    name: Trivy DB
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aquasecurity/setup-trivy@v0.2.4
+      - run: trivy image --download-db-only
 
   secrets:
     name: Secrets Scan
@@ -46,7 +54,7 @@ jobs:
         with:
           go-version-file: backend/go.mod
           cache: true
-      - name: Checks
+      - name: Run checks
         run: |
           cd backend
           go vet ./...
@@ -56,87 +64,83 @@ jobs:
   build-backend:
     name: Build Backend
     runs-on: ubuntu-latest
-    needs: [secrets, lint, go-security]
+    needs: [secrets, lint, go-security, trivy-db]
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Set Short SHA
+      - name: Set SHA
         run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
 
-      - name: Configure AWS credentials
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v2
+      - uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Backend Image
+      - name: Build + Cache + Load
         uses: docker/build-push-action@v6
         with:
           context: ./backend
-          push: true
+          push: false
+          load: true
           tags: ${{ env.REGISTRY }}/skillpulse-backend:${{ env.SHORT_SHA }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/skillpulse-backend:cache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/skillpulse-backend:cache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/skillpulse-backend:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/skillpulse-backend:buildcache,mode=max
+
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/skillpulse-backend:${{ env.SHORT_SHA }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: 1
+
+      - name: Push Image
+        run: docker push ${{ env.REGISTRY }}/skillpulse-backend:${{ env.SHORT_SHA }}
 
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
-    needs: [secrets, lint, go-security]
+    needs: [secrets, lint, go-security, trivy-db]
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Set Short SHA
+      - name: Set SHA
         run: echo "SHORT_SHA=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
 
-      - name: Configure AWS credentials
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to ECR
-        uses: aws-actions/amazon-ecr-login@v2
+      - uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Frontend Image
+      - name: Build + Cache + Load
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
-          push: true
+          push: false
+          load: true
           tags: ${{ env.REGISTRY }}/skillpulse-frontend:${{ env.SHORT_SHA }}
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/skillpulse-frontend:cache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/skillpulse-frontend:cache,mode=max
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/skillpulse-frontend:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/skillpulse-frontend:buildcache,mode=max
 
-  trivy-backend:
-    name: Trivy Backend
-    runs-on: ubuntu-latest
-    needs: build-backend
-    steps:
-      - name: Run Trivy Scan
+      - name: Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/skillpulse-backend:${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/skillpulse-frontend:${{ env.SHORT_SHA }}
           format: table
           severity: CRITICAL,HIGH
           exit-code: 1
-          ignore-unfixed: true
 
-  trivy-frontend:
-    name: Trivy Frontend
-    runs-on: ubuntu-latest
-    needs: build-frontend
-    steps:
-      - name: Run Trivy Scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.REGISTRY }}/skillpulse-frontend:${{ github.sha }}
-          format: table
-          severity: CRITICAL,HIGH
-          exit-code: 1
-          ignore-unfixed: true
+      - name: Push Image
+        run: docker push ${{ env.REGISTRY }}/skillpulse-frontend:${{ env.SHORT_SHA }}
