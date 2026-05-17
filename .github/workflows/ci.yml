@@ -109,7 +109,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set Short SHA
-        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+        run: echo "SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
 
       - name: Set Image Name
         run: echo "IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/skillpulse-${{ matrix.service }}" >> $GITHUB_ENV

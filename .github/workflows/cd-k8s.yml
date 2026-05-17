@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,24 +22,39 @@ jobs:
         env:
           SHA: ${{ github.event.workflow_run.head_sha }}
           DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+
         run: |
+          set -e
+
+          # convert full SHA → short SHA (IMPORTANT FIX)
+          SHA=$(echo "$SHA" | cut -c1-7)
+
           if [ -z "$DOCKER_USER" ]; then
             echo "ERROR: DOCKERHUB_USERNAME secret is not set."
             exit 1
           fi
-          sed -i "s|image: ${DOCKER_USER}/skillpulse-backend:.*|image: ${DOCKER_USER}/skillpulse-backend:${SHA}|"  k8s/05-backend.yaml 
+
+          echo "Updating manifests with image tag: $SHA"
+
+          sed -i "s|image: ${DOCKER_USER}/skillpulse-backend:.*|image: ${DOCKER_USER}/skillpulse-backend:${SHA}|" k8s/05-backend.yaml
           sed -i "s|image: ${DOCKER_USER}/skillpulse-frontend:.*|image: ${DOCKER_USER}/skillpulse-frontend:${SHA}|" k8s/07-frontend.yaml
 
       - name: Commit + push if changed
         env:
           SHA: ${{ github.event.workflow_run.head_sha }}
+
         run: |
+          set -e
+
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           if git diff --quiet; then
-            echo "Manifests already pinned to ${SHA}; nothing to commit."
+            echo "No changes to commit"
             exit 0
           fi
+
           git add k8s/05-backend.yaml k8s/07-frontend.yaml
-          git commit -m "deploy: pin backend+frontend to ${SHA:0:7}"
+
+          git commit -m "deploy: pin images to $(echo $SHA | cut -c1-7)"
           git push
