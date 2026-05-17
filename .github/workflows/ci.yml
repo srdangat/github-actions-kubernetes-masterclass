@@ -1,4 +1,4 @@
-name: Platform CI
+name: CI
 
 on:
   push:
@@ -15,150 +15,86 @@ permissions:
 
 env:
   REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-  TAG: ${{ github.sha }}
 
 jobs:
-
-  security-gate:
+  security:
     name: Security Gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
-      - uses: gitleaks/gitleaks-action@v2
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
 
-      - uses: hadolint/hadolint-action@v3.1.0
+      - name: Hadolint Backend
+        uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: backend/Dockerfile
-          failure-threshold: warning
 
-      - uses: hadolint/hadolint-action@v3.1.0
+      - name: Hadolint Frontend
+        uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: frontend/Dockerfile
-          failure-threshold: warning
 
-  go-audit:
-    name: Go Dependency Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - name: Go Vuln Check
+        uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
           cache: true
 
-      - run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        run: |
           cd backend
+          go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
-  build-backend:
-    name: Backend Image Build
+  build-scan-push:
+    name: build-scan-push
     runs-on: ubuntu-latest
-    needs: [security-gate, go-audit]
+    needs: security
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [backend, frontend]
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Short Tag
-        run: echo "SHORT=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+      - name: Set TAG
+        run: echo "TAG=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
 
-      - name: Build Backend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          load: true
-          push: false
-          tags: ${{ env.REGISTRY }}/skillpulse-backend:${{ env.SHORT }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,scope=backend,mode=max
-
-  scan-backend:
-    name: Backend Vulnerability Scan
-    runs-on: ubuntu-latest
-    needs: build-backend
-    steps:
-      - uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.REGISTRY }}/skillpulse-backend:${{ github.sha }}
-          format: table
-          severity: CRITICAL,HIGH
-          exit-code: 1
-          ignore-unfixed: true
-
-  push-backend:
-    name: Backend Publish
-    runs-on: ubuntu-latest
-    needs: scan-backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS
+      - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - run: |
-          docker push $REGISTRY/skillpulse-backend:${TAG:0:7}
-
-  build-frontend:
-    name: Frontend Image Build
-    runs-on: ubuntu-latest
-    needs: [security-gate, go-audit]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Short Tag
-        run: echo "SHORT=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
-
-      - name: Build Frontend
+      - name: Build image
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
+          context: ./${{ matrix.service }}
           load: true
           push: false
-          tags: ${{ env.REGISTRY }}/skillpulse-frontend:${{ env.SHORT }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,scope=frontend,mode=max
+          tags: ${{ env.REGISTRY }}/skillpulse-${{ matrix.service }}:${{ env.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  scan-frontend:
-    name: Frontend Vulnerability Scan
-    runs-on: ubuntu-latest
-    needs: build-frontend
-    steps:
-      - uses: aquasecurity/trivy-action@master
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/skillpulse-frontend:${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/skillpulse-${{ matrix.service }}:${{ env.TAG }}
           format: table
           severity: CRITICAL,HIGH
           exit-code: 1
           ignore-unfixed: true
 
-  push-frontend:
-    name: Frontend Publish
-    runs-on: ubuntu-latest
-    needs: scan-frontend
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - uses: aws-actions/amazon-ecr-login@v2
-
-      - run: |
-          docker push $REGISTRY/skillpulse-frontend:${TAG:0:7}
+      - name: Push Image
+        run: |
+          IMAGE=$REGISTRY/skillpulse-${{ matrix.service }}:$TAG
+          docker push $IMAGE
