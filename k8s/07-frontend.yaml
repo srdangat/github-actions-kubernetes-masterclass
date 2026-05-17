@@ -11,8 +11,7 @@ spec:
   selector:
     app: frontend
   ports:
-    - name: http
-      port: 80
+    - port: 80
       targetPort: 80
       nodePort: 30080
 ---
@@ -21,6 +20,8 @@ kind: Deployment
 metadata:
   name: frontend
   namespace: skillpulse
+  labels:
+    app: frontend
 spec:
   replicas: 1
   selector:
@@ -33,26 +34,34 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: trainwithshubham/skillpulse-frontend:latest
+          image: sanketdangat11/skillpulse-frontend:4cbfcd7
           imagePullPolicy: IfNotPresent
           ports:
-            - name: http
-              containerPort: 80
+            - containerPort: 80
           resources:
             requests:
               cpu: 50m
               memory: 32Mi
             limits:
+              cpu: 250m
               memory: 64Mi
-          livenessProbe:
+          startupProbe:
             httpGet:
               path: /
               port: 80
-            initialDelaySeconds: 5
-            periodSeconds: 10
+            failureThreshold: 30
+            periodSeconds: 5
           readinessProbe:
             httpGet:
               path: /
               port: 80
             initialDelaySeconds: 2
             periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
