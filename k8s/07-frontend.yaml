@@ -38,7 +38,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: sanketdangat11/skillpulse-frontend:ce606cd
+          image: sanketdangat11/skillpulse-frontend:59d3589
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80

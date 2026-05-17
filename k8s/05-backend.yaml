@@ -48,7 +48,7 @@ spec:
               done
       containers:
         - name: backend
-          image: sanketdangat11/skillpulse-backend:ce606cd
+          image: sanketdangat11/skillpulse-backend:59d3589
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
