@@ -41,8 +41,8 @@ jobs:
 
           echo "Updating manifests with image tag: $SHA"
 
-          sed -i "s|image: .*/skillpulse-backend:.*|image: ${REGISTRY}/skillpulse-backend:${SHA}|" k8s/07-backend-deployment.yaml
-          sed -i "s|image: .*/skillpulse-frontend:.*|image: ${REGISTRY}/skillpulse-frontend:${SHA}|" k8s/10-frontend-deployment.yaml
+          sed -i "s|image: .*/skillpulse-backend:.*|image: ${REGISTRY}/skillpulse-backend:${SHA}|" k8s/08-backend-deployment.yaml
+          sed -i "s|image: .*/skillpulse-frontend:.*|image: ${REGISTRY}/skillpulse-frontend:${SHA}|" k8s/11-frontend-deployment.yaml
 
       - name: Commit + push if changed
         env:
@@ -58,7 +58,7 @@ jobs:
             exit 0
           fi
 
-          git add k8s/07-backend-deployment.yaml k8s/10-frontend-deployment.yaml
+          git add k8s/08-backend-deployment.yaml k8s/11-frontend-deployment.yaml
 
           git commit -m "deploy: pin images to $(echo $SHA | cut -c1-7)"
           git push
