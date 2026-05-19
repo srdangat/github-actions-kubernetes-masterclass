@@ -1,10 +1,11 @@
+# Wave 3 Configure backend HorizontalPodAutoscaler for dynamic scaling
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: backend-hpa
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

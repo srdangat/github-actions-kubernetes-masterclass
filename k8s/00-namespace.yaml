@@ -1,0 +1,7 @@
+# Wave -3 Create skillpulse namespace before deploying application resources
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: skillpulse
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
