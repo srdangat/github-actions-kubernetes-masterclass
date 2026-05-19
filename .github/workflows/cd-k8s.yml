@@ -1,4 +1,4 @@
-name: CD (kind cluster — manifest bump)
+name: CD (Eks cluster — manifest bump)
 
 on:
   workflow_run:
@@ -13,36 +13,40 @@ jobs:
     permissions:
       contents: write
 
+    env:
+      REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
 
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Pin backend + frontend images to commit SHA
         env:
           SHA: ${{ github.event.workflow_run.head_sha }}
-          DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
-
         run: |
           set -e
 
-          # convert full SHA → short SHA (IMPORTANT FIX)
+          # convert full SHA → short SHA
           SHA=$(echo "$SHA" | cut -c1-7)
-
-          if [ -z "$DOCKER_USER" ]; then
-            echo "ERROR: DOCKERHUB_USERNAME secret is not set."
-            exit 1
-          fi
 
           echo "Updating manifests with image tag: $SHA"
 
-          sed -i "s|image: ${DOCKER_USER}/skillpulse-backend:.*|image: ${DOCKER_USER}/skillpulse-backend:${SHA}|" k8s/05-backend.yaml
-          sed -i "s|image: ${DOCKER_USER}/skillpulse-frontend:.*|image: ${DOCKER_USER}/skillpulse-frontend:${SHA}|" k8s/07-frontend.yaml
+          sed -i "s|image: .*/skillpulse-backend:.*|image: ${REGISTRY}/skillpulse-backend:${SHA}|" k8s/07-backend-deployment.yaml
+          sed -i "s|image: .*/skillpulse-frontend:.*|image: ${REGISTRY}/skillpulse-frontend:${SHA}|" k8s/10-frontend-deployment.yaml
 
       - name: Commit + push if changed
         env:
           SHA: ${{ github.event.workflow_run.head_sha }}
-
         run: |
           set -e
 
@@ -54,7 +58,7 @@ jobs:
             exit 0
           fi
 
-          git add k8s/05-backend.yaml k8s/07-frontend.yaml
+          git add k8s/07-backend-deployment.yaml k8s/10-frontend-deployment.yaml
 
           git commit -m "deploy: pin images to $(echo $SHA | cut -c1-7)"
           git push
