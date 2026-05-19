@@ -6,7 +6,7 @@ metadata:
   namespace: skillpulse
   annotations:
     argocd.argoproj.io/sync-wave: "6"
-    alb.ingress.kubernetes.io/load-balancer-name: nginx-test
+    alb.ingress.kubernetes.io/load-balancer-name: skillpulse-alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
