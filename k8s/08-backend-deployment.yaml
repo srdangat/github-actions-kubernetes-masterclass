@@ -1,11 +1,11 @@
-# Wave 2 Deploy backend application after MySQL availability
+# Wave 4 Deploy backend application after MySQL availability
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "4"
   labels:
     app: backend
 spec:

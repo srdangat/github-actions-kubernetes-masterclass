@@ -1,11 +1,11 @@
-# Wave 4 Expose frontend web service within the cluster
+# Wave 6 Expose frontend web service within the cluster
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "6"
   labels:
     app: frontend
 spec:

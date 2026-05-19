@@ -1,11 +1,11 @@
-# Wave 6 Configure ALB ingress routing for external application access
+# Wave 8 Configure ALB ingress routing for external application access
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: skillpulse-ingress
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "6"
+    argocd.argoproj.io/sync-wave: "8"
     alb.ingress.kubernetes.io/load-balancer-name: skillpulse-alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip

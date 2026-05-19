@@ -1,11 +1,11 @@
-# Wave 1 Expose backend API service within the cluster
+# Wave 3 Expose backend API service within the cluster
 apiVersion: v1
 kind: Service
 metadata:
   name: backend
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "3"
   labels:
     app: backend
 spec:

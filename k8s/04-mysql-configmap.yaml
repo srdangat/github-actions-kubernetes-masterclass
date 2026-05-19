@@ -1,11 +1,11 @@
-# Wave -2 Load MySQL initialization schema and seed data scripts
+# Wave 0 Load MySQL initialization schema and seed data scripts
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mysql-init
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-wave: "0"
 data:
   init.sql: |
     CREATE DATABASE IF NOT EXISTS skillpulse;

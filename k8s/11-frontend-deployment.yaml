@@ -1,11 +1,11 @@
-# Wave 5 Deploy frontend application after backend API readiness
+# Wave 7 Deploy frontend application after backend API readiness
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "7"
   labels:
     app: frontend
 spec:

@@ -1,11 +1,10 @@
-# Wave 0 → Deploy MySQL StatefulSet with persistent storage and initialization
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mysql
   namespace: skillpulse
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   serviceName: mysql
   replicas: 1
@@ -17,6 +16,7 @@ spec:
       labels:
         app: mysql
     spec:
+      serviceAccountName: skillpulse-sa
       containers:
         - name: mysql
           image: mysql:8.4
@@ -29,8 +29,12 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql
+
             - name: init
               mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+            - name: secrets-store-inline
+              mountPath: /mnt/secrets-store
               readOnly: true
           resources:
             requests:
@@ -67,7 +71,12 @@ spec:
         - name: init
           configMap:
             name: mysql-init
-
+        - name: secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "skillpulse-db-secret"
   volumeClaimTemplates:
     - metadata:
         name: data
