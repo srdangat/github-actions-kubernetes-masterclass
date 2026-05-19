@@ -1,4 +1,4 @@
-# Wave 0 Deploy MySQL StatefulSet with persistent storage and initialization
+# Wave 0 → Deploy MySQL StatefulSet with persistent storage and initialization
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -42,22 +42,21 @@ spec:
           startupProbe:
             exec:
               command:
-                - mysqladmin
-                - ping
-                - -h
-                - 127.0.0.1
+                - sh
+                - -c
+                - mysql -uroot -p$MYSQL_ROOT_PASSWORD -e "SELECT 1"
             failureThreshold: 60
             periodSeconds: 5
           readinessProbe:
             exec:
               command:
-                - mysqladmin
-                - ping
-                - -h
-                - 127.0.0.1
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 3
+                - sh
+                - -c
+                - mysql -uroot -p$MYSQL_ROOT_PASSWORD -e "SELECT 1"
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           livenessProbe:
             tcpSocket:
               port: 3306
@@ -68,6 +67,7 @@ spec:
         - name: init
           configMap:
             name: mysql-init
+
   volumeClaimTemplates:
     - metadata:
         name: data
