@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: sanketdangat11/skillpulse-frontend:59d3589
+          image: 324761312512.dkr.ecr.ap-south-1.amazonaws.com/skillpulse-frontend:924a906
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
