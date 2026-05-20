@@ -95,9 +95,35 @@ variable "node_capacity_type" {
   default     = "ON_DEMAND"
 }
 
+
+variable "desired_size" {
+  description = "Desired number of instances for the node group"
+  type        = number
+  default     = 3
+}
+
+variable "min_size" {
+  description = "Minimum number of instances for the node group"
+  type        = number
+  default     = 1
+}
+
+variable "max_size" {
+  description = "Maximum number of instances for the node group"
+  type        = number
+  default     = 5
+}
+
 # Root volume size (GiB) for worker nodes
 variable "node_disk_size" {
   description = "Disk size in GiB for worker nodes"
   type        = number
   default     = 20
+}
+
+
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate for ALB ingress"
+  type        = string
+  default     = null
 }
