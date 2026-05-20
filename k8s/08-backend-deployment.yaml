@@ -31,7 +31,7 @@ spec:
               done
       containers:
         - name: backend
-          image: 324761312512.dkr.ecr.ap-south-1.amazonaws.com/skillpulse-backend:924a906
+          image: 324761312512.dkr.ecr.ap-south-1.amazonaws.com/skillpulse-backend:e5040c6
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
